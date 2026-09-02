@@ -32,6 +32,10 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# Python bytecode caches left behind by BMAD helper scripts
+__pycache__/
+*.py[cod]
+
 # Windows Git Bash safety: prevent accidental NUL device files
 nul
 
