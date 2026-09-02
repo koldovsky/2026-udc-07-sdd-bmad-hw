@@ -1,0 +1,56 @@
+schema: spec-driven
+githubCopilot:
+  cloudAgent: false
+
+context: |
+  Tech stack: TypeScript (ESM, NodeNext), Node 22, vitest. No runtime deps.
+  Commands: `cd app && npm test` (vitest run), `npm run typecheck` (tsc -p tsconfig.json).
+  Source of truth for this workstream: docs/spec/pricing-discounts.md (Ukrainian).
+  That document owns the decision table (D-1..D-20) and acceptance criteria (AC-1..AC-20).
+  OpenSpec artifacts must REFERENCE those IDs, never silently re-decide them.
+  Domain: e-commerce checkout pricing.
+  MONEY: all amounts are whole kopecks (integers). 1 грн = 100 копійок.
+  Never introduce floating-point money fields. Rounding is half-up (floor(x + 0.5)).
+  Frozen contract — do not change signatures or behaviour:
+    app/src/types.ts     (Order, LineItem, Coupon)
+    app/src/pricing.ts   (lineTotalKopecks, subtotalKopecks, shippingKopecks, tierPercent)
+  New code lives in app/src/discounts.ts; tests are named by AC id.
+
+rules:
+  specs:
+    - Every requirement must cite the D-N decision(s) it encodes from docs/spec/pricing-discounts.md.
+    - Every scenario must cite the AC-N id it implements and use concrete kopeck amounts, never "correct" or "reasonable".
+  tasks:
+    - Every task must name the file it touches and the AC ids it satisfies.
+    - No task may modify app/src/pricing.ts or app/src/types.ts.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
