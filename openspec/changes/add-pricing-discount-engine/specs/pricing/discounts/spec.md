@@ -203,6 +203,16 @@ MUST NOT raise an exception for any input and MUST NOT clamp malformed coupon va
 - **THEN** it is accepted — a fractional percentage is legitimate — the coupon discount is
   7 500 kopecks and the payable total is 97 400 kopecks
 
+#### Scenario: Coupon codes match exactly (AC-24)
+
+- **WHEN** the catalogue holds the code `O10` and a 100 000 kopeck order for a tier `none`
+  customer enters `o10`, or ` O10 ` with surrounding spaces
+- **THEN** the code is rejected with reason `unknown` and the payable total is 104 900 kopecks —
+  the engine SHALL NOT trim or case-fold entered codes, because normalising customer input is
+  the responsibility of the layer that collects it (D-24)
+- **WHEN** the entered code is exactly `O10`
+- **THEN** it applies and the payable total is 94 900 kopecks
+
 ### Requirement: The payable total is never negative
 
 The system SHALL cap every individual discount at the amount still remaining, SHALL floor the

@@ -349,6 +349,19 @@ describe("rejection reasons", () => {
     expect(ok.couponDiscountKopecks).toBe(7_500);
     expect(ok.totalKopecks).toBe(97_400);
   });
+
+  it("AC-24: code matching is exact — case and surrounding space are not normalised", () => {
+    const catalog = [coupon({ code: "O10", kind: "percent", value: 10 })];
+
+    for (const typed of ["o10", " O10 "]) {
+      const b = price(order({ coupons: [typed] }), catalog);
+      expect(reasons(b)).toEqual([`${typed}:unknown`]);
+      expect(b.totalKopecks).toBe(104_900);
+    }
+
+    const exact = price(order({ coupons: ["O10"] }), catalog);
+    expect(exact.totalKopecks).toBe(94_900);
+  });
 });
 
 // ── AC-19 .. AC-20 ──────────────────���───────────────────────────────────────

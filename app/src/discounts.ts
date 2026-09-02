@@ -142,7 +142,10 @@ export function priceOrder(order: Order, catalog: Coupon[], now: Date = new Date
     // Checks run in the fixed order of D-17: a coupon can fail more than one,
     // and without a fixed order the reported reason would be an accident.
 
-    const coupon = catalog.find((c) => c.code === code); // D-22: first match wins
+    // D-22: first match wins. D-24: exact match — no trim/toUpperCase here;
+    // normalising input belongs to the layer that collects order.coupons, not
+    // to the pricing engine.
+    const coupon = catalog.find((c) => c.code === code);
     if (coupon === undefined) {
       rejected.push({ code, reason: "unknown" }); // D-10
       continue;
