@@ -30,7 +30,7 @@ D-15).
 
 - **WHEN** a domestic order of 100 000 kopecks is priced for a `gold` customer with no coupons
 - **THEN** the tier discount is 10 000 kopecks, the coupon discount is 0, shipping is 4 900 and
-  the payable total is 95 100 kopecks
+  the payable total is 94 900 kopecks
 
 #### Scenario: Silver and none tiers (AC-2)
 
@@ -164,7 +164,7 @@ The system SHALL always return a successful breakdown and SHALL classify every c
 apply into exactly one reason, evaluated in the fixed order `unknown`, `duplicate_code`,
 `invalid_value`, `expired`, `below_min_subtotal`, `duplicate_scope`, `no_matching_items`. It
 MUST NOT raise an exception for any input and MUST NOT clamp malformed coupon values into range
-(D-8, D-10, D-12, D-13, D-17, D-21).
+(D-8, D-10, D-12, D-13, D-17, D-21, D-23).
 
 #### Scenario: Unknown code (AC-15)
 
@@ -191,6 +191,17 @@ MUST NOT raise an exception for any input and MUST NOT clamp malformed coupon va
   the second a 50% coupon, and a 100 000 kopeck order for a tier `none` customer enters `SAME`
 - **THEN** the first entry wins, the coupon discount is 10 000 kopecks and the payable total is
   94 900 kopecks
+
+#### Scenario: Non-integral coupon values (AC-23)
+
+- **WHEN** the catalogue contains a fixed coupon whose value is `NaN`, or a fixed coupon worth
+  100.5 kopecks
+- **THEN** each is rejected with reason `invalid_value`, because a non-integral or non-finite
+  amount would otherwise reach the breakdown and violate the balance requirement
+- **WHEN** the catalogue contains a percent coupon of 7.5% applied to a 100 000 kopeck order for
+  a tier `none` customer
+- **THEN** it is accepted — a fractional percentage is legitimate — the coupon discount is
+  7 500 kopecks and the payable total is 97 400 kopecks
 
 ### Requirement: The payable total is never negative
 
