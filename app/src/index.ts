@@ -5,3 +5,8 @@ export {
   shippingKopecks,
   tierPercent,
 } from "./pricing.js";
+export {
+  priceOrder,
+  ExpiredCouponError,
+  type PriceBreakdown,
+} from "./discounts.js";
