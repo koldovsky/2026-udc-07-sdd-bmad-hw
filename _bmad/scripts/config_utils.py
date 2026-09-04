@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import tomllib
+from datetime import date, datetime, time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -12,6 +13,13 @@ class ConfigError(ValueError):
 
 
 _KEYED_MERGE_FIELDS = ("code", "id")
+
+
+def toml_json_default(value: Any) -> str:
+    """Serialize TOML temporal values; other types keep standard JSON errors."""
+    if isinstance(value, (date, time, datetime)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
 def load_toml(path: Path, *, required: bool = False) -> dict[str, Any]:

@@ -13,7 +13,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 try:
-    from config_utils import ConfigError, load_customization
+    from config_utils import ConfigError, load_customization, toml_json_default
 except ModuleNotFoundError as error:
     if error.name != "tomllib":
         raise
@@ -48,7 +48,9 @@ def write_json_stdout(output) -> None:
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if reconfigure is not None:
         reconfigure(encoding="utf-8")
-    sys.stdout.write(json.dumps(output, indent=2, ensure_ascii=False) + "\n")
+    sys.stdout.write(
+        json.dumps(output, indent=2, ensure_ascii=False, default=toml_json_default) + "\n"
+    )
 
 
 def main() -> int:

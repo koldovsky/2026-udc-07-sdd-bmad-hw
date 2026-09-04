@@ -13,7 +13,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 try:
-    from config_utils import ConfigError, load_central_config
+    from config_utils import ConfigError, load_central_config, toml_json_default
 except ModuleNotFoundError as error:
     if error.name != "tomllib":
         raise
@@ -66,7 +66,9 @@ def main() -> int:
             value = extract_key(merged, key)
             if value is not _MISSING:
                 output[key] = value
-    sys.stdout.write(json.dumps(output, indent=2, ensure_ascii=False) + "\n")
+    sys.stdout.write(
+        json.dumps(output, indent=2, ensure_ascii=False, default=toml_json_default) + "\n"
+    )
     return 0
 
 
