@@ -88,6 +88,11 @@ def resolve(args) -> Path:
     return Path(args.path) if args.path else Path(args.workspace) / MEMLOG
 
 
+def is_valid_frontmatter_key(key: str) -> bool:
+    """Keys must be non-empty, not the fence, and free of colon / CR / LF."""
+    return bool(key) and key != "---" and ":" not in key and "\r" not in key and "\n" not in key
+
+
 def split(text: str) -> tuple[dict, str]:
     """Return (frontmatter dict in source order, body str). Frontmatter is plain key: value.
 
@@ -196,7 +201,11 @@ def cmd_init(args) -> int:
                 print(f"error: --field expects key=value, got {pair!r}", file=sys.stderr)
                 return 2
             k, v = pair.split("=", 1)
-            meta[k.strip()] = v.strip()
+            k = k.strip()
+            if not is_valid_frontmatter_key(k):
+                print(f"error: invalid frontmatter key {k!r}", file=sys.stderr)
+                return 2
+            meta[k] = v.strip()
         touch(meta)
         write_atomic(path, render(meta, ""))
         ack(path, "")
@@ -222,6 +231,9 @@ def cmd_append(args) -> int:
 
 def cmd_set(args) -> int:
     path = resolve(args)
+    if not is_valid_frontmatter_key(args.key):
+        print(f"error: invalid frontmatter key {args.key!r}", file=sys.stderr)
+        return 2
     with exclusive_lock(path):
         meta, body = split(path.read_text(encoding="utf-8"))
         meta[args.key] = args.value

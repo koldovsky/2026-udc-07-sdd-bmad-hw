@@ -5,7 +5,6 @@
 """Resolve BMad's four central TOML layers to JSON."""
 
 import argparse
-import json
 import sys
 from pathlib import Path
 
@@ -13,7 +12,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 
 try:
-    from config_utils import ConfigError, load_central_config, toml_json_default
+    from config_utils import ConfigError, load_central_config, write_json_stdout
 except ModuleNotFoundError as error:
     if error.name != "tomllib":
         raise
@@ -66,9 +65,7 @@ def main() -> int:
             value = extract_key(merged, key)
             if value is not _MISSING:
                 output[key] = value
-    sys.stdout.write(
-        json.dumps(output, indent=2, ensure_ascii=False, default=toml_json_default) + "\n"
-    )
+    write_json_stdout(output)
     return 0
 
 

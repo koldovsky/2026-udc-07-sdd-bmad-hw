@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import sys
 import tomllib
 from datetime import date, datetime, time
 from pathlib import Path
@@ -20,6 +22,16 @@ def toml_json_default(value: Any) -> str:
     if isinstance(value, (date, time, datetime)):
         return value.isoformat()
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
+def write_json_stdout(output: Any) -> None:
+    """Write JSON to stdout as UTF-8, including non-ASCII TOML strings."""
+    reconfigure = getattr(sys.stdout, "reconfigure", None)
+    if reconfigure is not None:
+        reconfigure(encoding="utf-8")
+    sys.stdout.write(
+        json.dumps(output, indent=2, ensure_ascii=False, default=toml_json_default) + "\n"
+    )
 
 
 def load_toml(path: Path, *, required: bool = False) -> dict[str, Any]:
