@@ -52,18 +52,22 @@ class TestMemlogFrontmatterKeys(unittest.TestCase):
         with tempfile.TemporaryDirectory() as raw:
             for i, field in enumerate(cases):
                 workspace = Path(raw) / f"run-{i}"
-                result = _run("init", "--workspace", str(workspace), "--field", field)
+                result = _run("init", "--workspace", str(workspace), f"--field={field}")
                 self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("invalid frontmatter key", result.stderr)
                 self.assertFalse((workspace / ".memlog.md").exists())
 
     def test_set_rejects_invalid_keys(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
             workspace = Path(raw) / "run"
-            init = _run("init", "--workspace", str(workspace), "--field", "topic=ok")
+            init = _run("init", "--workspace", str(workspace), "--field=topic=ok")
             self.assertEqual(init.returncode, 0, init.stderr)
             for key in ("---", "", "foo:bar", "a\nb"):
-                result = _run("set", "--workspace", str(workspace), "--key", key, "--value", "x")
+                result = _run(
+                    "set", "--workspace", str(workspace), f"--key={key}", "--value=x"
+                )
                 self.assertEqual(result.returncode, 2, result.stderr)
+                self.assertIn("invalid frontmatter key", result.stderr)
             body = (workspace / ".memlog.md").read_text(encoding="utf-8")
             self.assertIn("topic: ok", body)
 

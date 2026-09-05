@@ -13,6 +13,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from config_utils import toml_json_default, write_json_stdout  # noqa: E402
 
 
+class _StdoutSpy(io.StringIO):
+    def reconfigure(self, **kwargs) -> None:
+        self.reconfigure_kwargs = kwargs
+
+
 class TestTomlJsonDefault(unittest.TestCase):
     def test_temporal_values_use_isoformat(self) -> None:
         payload = {
@@ -32,13 +37,14 @@ class TestTomlJsonDefault(unittest.TestCase):
 
     def test_write_json_stdout_preserves_unicode_and_temporals(self) -> None:
         payload = {"name": "Привіт", "when": date(2026, 9, 4)}
-        buf = io.StringIO()
+        buf = _StdoutSpy()
         old = sys.stdout
         sys.stdout = buf
         try:
             write_json_stdout(payload)
         finally:
             sys.stdout = old
+        self.assertEqual(buf.reconfigure_kwargs.get("encoding"), "utf-8")
         text = buf.getvalue()
         self.assertIn("Привіт", text)
         self.assertNotIn("\\u041f", text)

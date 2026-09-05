@@ -24,7 +24,7 @@ def toml_json_default(value: Any) -> str:
     raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
 
 
-def write_json_stdout(output: Any) -> None:
+def write_json_stdout(output: object) -> None:
     """Write JSON to stdout as UTF-8, including non-ASCII TOML strings."""
     reconfigure = getattr(sys.stdout, "reconfigure", None)
     if reconfigure is not None:
