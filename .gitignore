@@ -40,3 +40,8 @@ nul
 # deliberately scope permissions there.
 .claude/*
 !.claude/settings.json
+
+# BMAD Method install — left over from evaluating SDD tools in Task B.
+# Task B / E used OpenSpec (see openspec/, docs/sdd-tool.md); BMAD's scaffold
+# is not part of the deliverable.
+_bmad/
