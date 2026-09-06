@@ -170,10 +170,11 @@ its full extent.
 
 A third limit is scope. OpenSpec's cycle does not end at the plan: `openspec
 instructions apply` guides the implementation and `openspec archive` folds a
-finished change into `openspec/specs/`, which is why that directory is still
-empty here. Task B stops at the task list, so neither was run, and nothing above
-is evidence about them. This verdict covers the planning and validation phases
-only — two of the three the tool offers.
+finished change into `openspec/specs/`. Task B stopped at the task list, so
+neither was run at the time this section was written, and nothing above is
+evidence about them. `openspec archive` was run in Task C once the tests were
+green; what it did is recorded in the addendum below. The verdict above covers
+the planning and validation phases only.
 
 Two costs are worth recording against it. The full-fidelity port duplicated a
 940-line specification into a 589-line English delta, and the two can now drift;
@@ -188,3 +189,42 @@ does not do.
 The honest summary: the tool paid for itself in structure and in the parsed
 model, it did not think about the domain at all, and its assurances need to be
 read for what they actually cover.
+
+## Addendum — the third phase, run in Task C
+
+Everything above was measured at the end of Task B. Task C implemented the
+change and then closed the cycle, so two facts stated above have moved.
+
+**The criterion count is now 60, not 58.** The reverse check of Task C found two
+behaviours the prose of the specification required and no criterion pinned: an
+`expiresAt` that is absent or not a string, and a `value` of `Infinity`. Both
+were added as AC-59 and AC-60 — to `docs/spec/pricing-discounts.md` first and to
+the delta second, in the order section 11 of the specification mandates. Every
+count of 58 above is the Task B state; the archived spec holds 60 scenarios
+across the same 11 requirements. Nothing in OpenSpec found this or could have:
+the delta was `valid` under `--strict` with both gaps open, because a missing
+criterion is not a structural defect. It was found by reading the code back
+against the criterion list by hand.
+
+**`openspec archive add-discount-engine --yes` was run** once `npm test` was
+green. It reported `Task status: ✓ Complete`, applied `+ 11 added` requirements,
+moved the change to `openspec/changes/archive/2026-09-06-add-discount-engine/`
+and created `openspec/specs/order-discounts/spec.md`. `openspec list` now says
+`No active changes found`; `openspec list --specs` says
+`order-discounts requirements 11`.
+
+What that adds over the planning phases is one thing, and it is a real one: the
+delta stops being a document about a change and becomes the current description
+of the capability, with the change kept beside it as history. The `ADDED` /
+`MODIFIED` vocabulary that "cost nothing and bought nothing yet" now has
+something to modify — the second change to discounts will be reviewable as an
+edit against this file rather than as a diff of a long document. That is the
+mechanism, not a measurement: this repository has one change, so the payoff is
+still promised rather than observed.
+
+What it does **not** add is any check that the archived spec matches the code.
+`archive` verified that the task list was ticked, and the task list was ticked by
+hand. Nothing in the tool ran the tests, and nothing in it knows
+`app/src/discounts.ts` exists. The link between the specification and the
+implementation is still `docs/traceability.md` and the criterion ids in the test
+names — both of which this repository added.

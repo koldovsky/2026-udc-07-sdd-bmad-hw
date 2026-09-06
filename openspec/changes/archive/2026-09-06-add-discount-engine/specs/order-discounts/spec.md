@@ -287,7 +287,8 @@ verbatim including surrounding whitespace.
 
 The system SHALL check expiry against the `now` argument and SHALL NOT read the
 clock. A coupon SHALL be rejected with reason `expired` when `now` is at or after
-its `expiresAt`, when `expiresAt` is not one of the two accepted forms —
+its `expiresAt`, when `expiresAt` is absent, is not a string, or is not one of
+the two accepted forms —
 `YYYY-MM-DD`, or a date and time carrying an explicit `Z` or `±HH:MM` offset
 within ±14:00 — when its calendar day does not exist, or when `now` is an
 `Invalid Date`. A date-only `expiresAt` SHALL mean midnight UTC. Absence from
@@ -360,6 +361,15 @@ the others. No malformed value SHALL cause an exception.
 - **THEN** the code is rejected with reason `expired`, the coupon discount is 0,
   and the total is 104 900; the same string with an offset of `+14:00` is
   accepted
+
+#### Scenario: AC-59 — a missing expiry date does not mean "never expires"
+
+- **WHEN** a customer with no tier orders 100 000 of items and types a coupon
+  whose `expiresAt` property is absent
+- **THEN** the code is rejected with reason `expired`, the coupon discount is 0,
+  the total is 104 900, and no exception is thrown — an implementation checking
+  only `now >= Date.parse(expiresAt)` would honour such a coupon forever, because
+  a comparison against `NaN` is always false
 
 ### Requirement: A minimum-subtotal threshold is compared with the full subtotal
 
@@ -508,6 +518,16 @@ argument shapes that match the declared signature, `priceOrder` SHALL NOT throw.
 - **THEN** the coupon discount is 0, the total is 104 900 and is a number rather
   than `NaN`, the code is rejected with reason `too-small`, and
   `appliedCouponCode` is `null`
+
+#### Scenario: AC-60 — `Infinity` does not give the order away
+
+- **WHEN** a customer with no tier orders 100 000 of items and types a coupon
+  with `kind: "fixed"` and `value: Infinity`
+- **THEN** the coupon discount is 0 rather than 100 000, the code is rejected
+  with reason `too-small`, `appliedCouponCode` is `null`, the total is 104 900,
+  and every numeric field satisfies `Number.isSafeInteger` — an implementation
+  testing `Number.isNaN` instead of `Number.isInteger` would cap `Infinity` at
+  the base and hand over the whole order
 
 #### Scenario: AC-42 — an unrecognised coupon kind
 

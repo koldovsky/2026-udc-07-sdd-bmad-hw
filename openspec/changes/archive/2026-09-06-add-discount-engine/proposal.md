@@ -8,7 +8,7 @@ order. Two engineers reading that ticket would ship two different amounts of
 money.
 
 Those forks were priced in `docs/spec/pricing-discounts.md` (32 decisions with
-rationale, 58 acceptance criteria, 5 invariants). This change carries that
+rationale, 60 acceptance criteria, 5 invariants). This change carries that
 decided behaviour into the OpenSpec cycle so the requirements are
 machine-checkable and the implementation has a task list derived from them
 rather than from the ticket.
@@ -25,7 +25,7 @@ system does, in a format `openspec validate --strict` can check.
 - **New** re-exports from `app/src/index.ts` (types via `export type`, the
   function via `export`).
 - **New** tests in `app/src/discounts.test.ts`, each named after the acceptance
-  criterion it covers (`AC-1` … `AC-58`), so the link to the specification is
+  criterion it covers (`AC-1` … `AC-60`), so the link to the specification is
   visible in the test output.
 - The coupon catalog is passed in as `Coupon[]`. This change does not create,
   store, validate or administer a catalog.
