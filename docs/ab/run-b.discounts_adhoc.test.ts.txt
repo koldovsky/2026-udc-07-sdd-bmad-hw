@@ -1,0 +1,326 @@
+import { describe, it, expect } from "vitest";
+import { applyDiscounts } from "./discounts_adhoc.js";
+import type { Order, LineItem, Coupon } from "./types.js";
+
+// Amounts are whole kopecks. 25_000 = 250 грн.
+const item = (over: Partial<LineItem> = {}): LineItem => ({
+  sku: "AA-1",
+  name: "Thing",
+  unitPriceKopecks: 25_000,
+  quantity: 1,
+  category: "standard",
+  ...over,
+});
+
+const order = (over: Partial<Order> = {}): Order => ({
+  id: "o1",
+  items: [item()],
+  country: "UA",
+  customerTier: "none",
+  coupons: [],
+  ...over,
+});
+
+const coupon = (over: Partial<Coupon> = {}): Coupon => ({
+  code: "SAVE",
+  kind: "percent",
+  value: 10,
+  expiresAt: "2999-01-01T00:00:00.000Z",
+  ...over,
+});
+
+const NOW = new Date("2026-09-06T12:00:00.000Z");
+
+describe("applyDiscounts — baseline", () => {
+  it("with no tier and no coupons, total is subtotal + shipping", () => {
+    const r = applyDiscounts(order(), [], { now: NOW });
+    expect(r.subtotalKopecks).toBe(25_000);
+    expect(r.totalDiscountKopecks).toBe(0);
+    expect(r.shippingKopecks).toBe(4_900);
+    expect(r.totalKopecks).toBe(29_900);
+  });
+
+  it("an empty order does not throw and totals to zero", () => {
+    const r = applyDiscounts(order({ items: [], coupons: ["SAVE"] }), [coupon()], { now: NOW });
+    expect(r.subtotalKopecks).toBe(0);
+    expect(r.totalKopecks).toBe(0);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(0);
+  });
+});
+
+describe("applyDiscounts — loyalty tier", () => {
+  it("Silver takes 5% off merchandise only, not shipping", () => {
+    const r = applyDiscounts(order({ customerTier: "silver" }), [], { now: NOW });
+    expect(r.tierPercent).toBe(5);
+    expect(r.tierDiscountKopecks).toBe(1_250);
+    expect(r.shippingKopecks).toBe(4_900);
+    expect(r.totalKopecks).toBe(25_000 - 1_250 + 4_900);
+  });
+
+  it("Gold takes 10% off merchandise", () => {
+    const r = applyDiscounts(order({ customerTier: "gold" }), [], { now: NOW });
+    expect(r.tierDiscountKopecks).toBe(2_500);
+  });
+
+  it("a half-kopeck tier discount rounds up", () => {
+    // 5% of 10 kopecks = 0.5 -> 1
+    const r = applyDiscounts(
+      order({ customerTier: "silver", items: [item({ unitPriceKopecks: 10, quantity: 1 })] }),
+      [],
+      { now: NOW },
+    );
+    expect(r.tierDiscountKopecks).toBe(1);
+  });
+});
+
+describe("applyDiscounts — coupon stacking", () => {
+  it("a percent coupon stacks sequentially after the tier", () => {
+    // subtotal 100_000; gold -10% -> 90_000; SAVE -10% -> 81_000
+    const o = order({
+      customerTier: "gold",
+      items: [item({ unitPriceKopecks: 100_000 })],
+      coupons: ["SAVE"],
+    });
+    const r = applyDiscounts(o, [coupon({ value: 10 })], { now: NOW });
+    expect(r.tierDiscountKopecks).toBe(10_000);
+    expect(r.couponDiscountKopecks).toBe(9_000);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(81_000);
+  });
+
+  it("two percent coupons both apply, in entry order, each on the reduced remainder", () => {
+    // 100_000 -> A -10% -> 90_000 -> B -15% -> 76_500
+    const o = order({
+      items: [item({ unitPriceKopecks: 100_000 })],
+      coupons: ["A", "B"],
+    });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "A", value: 10 }), coupon({ code: "B", value: 15 })],
+      { now: NOW },
+    );
+    expect(r.appliedCoupons.map((c) => c.code)).toEqual(["A", "B"]);
+    expect(r.couponDiscountKopecks).toBe(10_000 + 13_500);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(76_500);
+  });
+
+  it("applied-coupon breakdown amounts sum to couponDiscountKopecks", () => {
+    const o = order({
+      items: [item({ unitPriceKopecks: 100_000 })],
+      coupons: ["A", "B"],
+    });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "A", value: 10 }), coupon({ code: "B", kind: "fixed", value: 5_000 })],
+      { now: NOW },
+    );
+    const summed = r.appliedCoupons.reduce((s, c) => s + c.discountKopecks, 0);
+    expect(summed).toBe(r.couponDiscountKopecks);
+  });
+});
+
+describe("applyDiscounts — fixed-amount coupons", () => {
+  it("a fixed coupon subtracts its kopeck value", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 100_000 })], coupons: ["SAVE"] });
+    const r = applyDiscounts(o, [coupon({ kind: "fixed", value: 15_000 })], { now: NOW });
+    expect(r.couponDiscountKopecks).toBe(15_000);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(85_000);
+  });
+
+  it("a fixed coupon larger than the merchandise is clamped; total floors at shipping", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 5_000 })], coupons: ["BIG"] });
+    const r = applyDiscounts(o, [coupon({ code: "BIG", kind: "fixed", value: 999_999 })], {
+      now: NOW,
+    });
+    expect(r.couponDiscountKopecks).toBe(5_000);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(0);
+    expect(r.totalKopecks).toBe(4_900); // shipping still charged
+  });
+
+  it("a 100% coupon cannot drive the order negative", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 5_000 })], coupons: ["ALL", "MORE"] });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "ALL", value: 100 }), coupon({ code: "MORE", value: 50 })],
+      { now: NOW },
+    );
+    expect(r.merchandiseAfterDiscountKopecks).toBe(0);
+    expect(r.appliedCoupons[1]?.discountKopecks).toBe(0);
+    expect(r.totalKopecks).toBe(4_900);
+  });
+
+  it("a half-kopeck percent coupon rounds up", () => {
+    // 5% of 10 kopecks = 0.5 -> 1
+    const o = order({ items: [item({ unitPriceKopecks: 10 })], coupons: ["SAVE"] });
+    const r = applyDiscounts(o, [coupon({ value: 5 })], { now: NOW });
+    expect(r.couponDiscountKopecks).toBe(1);
+  });
+});
+
+describe("applyDiscounts — category-scoped coupons", () => {
+  it("a category coupon discounts only that category's remaining amount", () => {
+    const o = order({
+      items: [
+        item({ sku: "S", category: "standard", unitPriceKopecks: 60_000 }),
+        item({ sku: "F", category: "fresh", unitPriceKopecks: 40_000 }),
+      ],
+      coupons: ["FRESH10"],
+    });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "FRESH10", value: 10, category: "fresh" })],
+      { now: NOW },
+    );
+    expect(r.couponDiscountKopecks).toBe(4_000); // 10% of the 40_000 fresh line only
+    expect(r.merchandiseAfterDiscountKopecks).toBe(96_000);
+  });
+
+  it("a category coupon with no matching items is rejected", () => {
+    const o = order({ items: [item({ category: "standard" })], coupons: ["FRESH10"] });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "FRESH10", value: 10, category: "fresh" })],
+      { now: NOW },
+    );
+    expect(r.appliedCoupons).toHaveLength(0);
+    expect(r.rejectedCoupons).toEqual([{ code: "FRESH10", reason: "no-eligible-items" }]);
+  });
+
+  it("two coupons on the same category both apply, sequentially", () => {
+    const o = order({
+      items: [item({ category: "fresh", unitPriceKopecks: 100_000 })],
+      coupons: ["F1", "F2"],
+    });
+    const r = applyDiscounts(
+      o,
+      [
+        coupon({ code: "F1", value: 10, category: "fresh" }),
+        coupon({ code: "F2", value: 10, category: "fresh" }),
+      ],
+      { now: NOW },
+    );
+    // 100_000 -> -10% -> 90_000 -> -10% -> 81_000
+    expect(r.merchandiseAfterDiscountKopecks).toBe(81_000);
+    expect(r.couponDiscountKopecks).toBe(19_000);
+  });
+});
+
+describe("applyDiscounts — minimum subtotal", () => {
+  it("applies when the original subtotal reaches the minimum", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 100_000 })], coupons: ["MIN"] });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "MIN", value: 10, minSubtotalKopecks: 100_000 })],
+      { now: NOW },
+    );
+    expect(r.couponDiscountKopecks).toBe(10_000);
+  });
+
+  it("rejects when the original subtotal is below the minimum", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 90_000 })], coupons: ["MIN"] });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "MIN", value: 10, minSubtotalKopecks: 100_000 })],
+      { now: NOW },
+    );
+    expect(r.rejectedCoupons).toEqual([{ code: "MIN", reason: "min-subtotal-not-met" }]);
+  });
+
+  it("checks the minimum BEFORE discounts — tier dropping below the bar does not disqualify", () => {
+    // subtotal 100_000 meets min; gold tier would take it to 90_000, but the
+    // coupon still applies because the check is on the pre-discount subtotal.
+    const o = order({
+      customerTier: "gold",
+      items: [item({ unitPriceKopecks: 100_000 })],
+      coupons: ["MIN"],
+    });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "MIN", value: 10, minSubtotalKopecks: 100_000 })],
+      { now: NOW },
+    );
+    expect(r.appliedCoupons).toHaveLength(1);
+    expect(r.couponDiscountKopecks).toBe(9_000); // 10% of the 90_000 left after tier
+  });
+});
+
+describe("applyDiscounts — expiry", () => {
+  it("an expired coupon is a silent no-op, surfaced in rejectedCoupons", () => {
+    const o = order({ coupons: ["OLD"] });
+    const run = () =>
+      applyDiscounts(o, [coupon({ code: "OLD", expiresAt: "2020-01-01T00:00:00.000Z" })], {
+        now: NOW,
+      });
+    expect(run).not.toThrow();
+    const r = run();
+    expect(r.appliedCoupons).toHaveLength(0);
+    expect(r.rejectedCoupons).toEqual([{ code: "OLD", reason: "expired" }]);
+    expect(r.totalDiscountKopecks).toBe(0);
+  });
+
+  it("a coupon is expired exactly on its expiresAt instant", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 100_000 })], coupons: ["EDGE"] });
+    const at = "2026-09-06T12:00:00.000Z";
+    const r = applyDiscounts(o, [coupon({ code: "EDGE", expiresAt: at })], {
+      now: new Date(at),
+    });
+    expect(r.rejectedCoupons).toEqual([{ code: "EDGE", reason: "expired" }]);
+  });
+
+  it("a coupon one millisecond before expiry still applies", () => {
+    const o = order({ items: [item({ unitPriceKopecks: 100_000 })], coupons: ["EDGE"] });
+    const r = applyDiscounts(
+      o,
+      [coupon({ code: "EDGE", value: 10, expiresAt: "2026-09-06T12:00:00.000Z" })],
+      { now: new Date("2026-09-06T11:59:59.999Z") },
+    );
+    expect(r.couponDiscountKopecks).toBe(10_000);
+  });
+});
+
+describe("applyDiscounts — malformed / duplicate codes", () => {
+  it("an unknown code is rejected, not thrown", () => {
+    const r = applyDiscounts(order({ coupons: ["NOPE"] }), [coupon()], { now: NOW });
+    expect(r.rejectedCoupons).toEqual([{ code: "NOPE", reason: "unknown-code" }]);
+  });
+
+  it("a duplicate identical code counts once; the repeat is rejected", () => {
+    const o = order({
+      items: [item({ unitPriceKopecks: 100_000 })],
+      coupons: ["SAVE", "SAVE"],
+    });
+    const r = applyDiscounts(o, [coupon({ value: 10 })], { now: NOW });
+    expect(r.appliedCoupons).toHaveLength(1);
+    expect(r.couponDiscountKopecks).toBe(10_000);
+    expect(r.rejectedCoupons).toEqual([{ code: "SAVE", reason: "duplicate" }]);
+  });
+});
+
+describe("applyDiscounts — shipping interaction & rounding spread", () => {
+  it("a digital-only order gets free shipping but still takes discounts", () => {
+    const o = order({
+      items: [item({ category: "digital", unitPriceKopecks: 100_000 })],
+      customerTier: "gold",
+      coupons: ["SAVE"],
+    });
+    const r = applyDiscounts(o, [coupon({ value: 10 })], { now: NOW });
+    expect(r.shippingKopecks).toBe(0);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(81_000);
+    expect(r.totalKopecks).toBe(81_000);
+  });
+
+  it("a whole-order percent is split across categories and every bucket stays integer", () => {
+    // 3 categories x 3_333 = 9_999; 10% = 999.9 -> 1000, spread 334/333/333.
+    const o = order({
+      items: [
+        item({ sku: "d", category: "digital", unitPriceKopecks: 3_333 }),
+        item({ sku: "f", category: "fresh", unitPriceKopecks: 3_333 }),
+        item({ sku: "s", category: "standard", unitPriceKopecks: 3_333 }),
+      ],
+      coupons: ["SAVE"],
+    });
+    const r = applyDiscounts(o, [coupon({ value: 10 })], { now: NOW });
+    expect(r.couponDiscountKopecks).toBe(1_000);
+    expect(r.merchandiseAfterDiscountKopecks).toBe(8_999);
+    expect(Number.isInteger(r.totalKopecks)).toBe(true);
+  });
+});

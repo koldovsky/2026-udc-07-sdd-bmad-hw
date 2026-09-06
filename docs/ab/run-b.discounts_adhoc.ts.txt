@@ -1,0 +1,261 @@
+// Ad-hoc discount engine — loyalty tiers + promo codes on top of ./pricing.
+//
+// Built from the (deliberately ambiguous) feature ticket only. Every fork the
+// ticket left open is resolved here; the load-bearing ones carry a
+// "SPEC DECISION" comment so a reviewer can see what was chosen and argue with
+// it. All money is whole kopecks (1 грн = 100 копійок); nothing here ever
+// produces a fractional kopeck.
+
+import type { Order, Coupon, LineItem } from "./types.js";
+import { lineTotalKopecks, subtotalKopecks, shippingKopecks, tierPercent } from "./pricing.js";
+
+type Category = LineItem["category"];
+
+// Deterministic iteration/tie-break order for category buckets.
+const CATEGORIES: readonly Category[] = ["digital", "fresh", "standard"];
+
+export type CouponRejectionReason =
+  | "unknown-code"
+  | "expired"
+  | "min-subtotal-not-met"
+  | "duplicate"
+  | "no-eligible-items";
+
+export interface AppliedCoupon {
+  code: string;
+  kind: Coupon["kind"];
+  /** Kopecks actually taken off by this code (after clamping). */
+  discountKopecks: number;
+}
+
+export interface RejectedCoupon {
+  code: string;
+  reason: CouponRejectionReason;
+}
+
+export interface DiscountBreakdown {
+  /** Items subtotal before any discount — identical to pricing.subtotalKopecks. */
+  subtotalKopecks: number;
+  /** Shipping fee — pricing.shippingKopecks, never touched by discounts. */
+  shippingKopecks: number;
+  /** Tier headline percentage that was applied (0 / 5 / 10). */
+  tierPercent: number;
+  tierDiscountKopecks: number;
+  couponDiscountKopecks: number;
+  /** tierDiscountKopecks + couponDiscountKopecks. */
+  totalDiscountKopecks: number;
+  /** Merchandise left after tier + coupons, floored at 0. */
+  merchandiseAfterDiscountKopecks: number;
+  /** What the customer pays: merchandiseAfterDiscountKopecks + shippingKopecks. */
+  totalKopecks: number;
+  appliedCoupons: AppliedCoupon[];
+  rejectedCoupons: RejectedCoupon[];
+}
+
+export interface ApplyDiscountsOptions {
+  /**
+   * The instant to test coupon expiry against. `Order` carries no time field,
+   * so the caller supplies "now"; defaults to the wall clock.
+   * SPEC DECISION: expiry is compared against this value, and a coupon is
+   * expired when `now >= expiresAt` (the type doc says "not valid on or after").
+   */
+  now?: Date;
+}
+
+const clamp = (n: number, lo: number, hi: number): number => Math.min(Math.max(n, lo), hi);
+
+// SPEC DECISION (rounding): every discount amount is rounded ONCE, at the moment
+// it is computed, off the (sub)total it applies to — not per line item. Rounding
+// is half-up (a half-kopeck goes to the larger discount, i.e. in the customer's
+// favour). All inputs here are >= 0, so Math.round == half-up.
+const roundKopecks = (n: number): number => Math.round(n);
+
+function isExpired(coupon: Coupon, now: Date): boolean {
+  const expiry = new Date(coupon.expiresAt).getTime();
+  // Unparseable dates -> NaN -> treated as "not expired" (fail open on bad data).
+  if (Number.isNaN(expiry)) return false;
+  return now.getTime() >= expiry;
+}
+
+/**
+ * Take `totalCut` kopecks off the given category buckets, keeping every bucket a
+ * non-negative integer. The cut is split across buckets in proportion to their
+ * current remaining value (largest-remainder method for the leftover kopecks,
+ * category order as the tie-break), and clamped so no bucket goes below zero.
+ * Returns how much was actually removed.
+ */
+function applyCutAcross(
+  remaining: Record<Category, number>,
+  cats: readonly Category[],
+  totalCut: number,
+): number {
+  const pool = cats.filter((c) => remaining[c] > 0);
+  const poolTotal = pool.reduce((s, c) => s + remaining[c], 0);
+  if (poolTotal <= 0 || totalCut <= 0) return 0;
+
+  const cut = Math.min(totalCut, poolTotal);
+
+  const parts = pool.map((c) => {
+    const exact = (cut * remaining[c]) / poolTotal;
+    return { c, floor: Math.floor(exact), frac: exact - Math.floor(exact) };
+  });
+
+  const alloc = new Map<Category, number>();
+  let assigned = 0;
+  for (const p of parts) {
+    alloc.set(p.c, p.floor);
+    assigned += p.floor;
+  }
+
+  let leftover = cut - assigned;
+  const byFrac = [...parts].sort(
+    (a, b) => b.frac - a.frac || CATEGORIES.indexOf(a.c) - CATEGORIES.indexOf(b.c),
+  );
+  for (const p of byFrac) {
+    if (leftover <= 0) break;
+    if ((alloc.get(p.c) ?? 0) < remaining[p.c]) {
+      alloc.set(p.c, (alloc.get(p.c) ?? 0) + 1);
+      leftover -= 1;
+    }
+  }
+  // Safety sweep: place any still-unassigned kopeck wherever there is room.
+  if (leftover > 0) {
+    for (const c of pool) {
+      if (leftover <= 0) break;
+      const room = remaining[c] - (alloc.get(c) ?? 0);
+      const give = Math.min(room, leftover);
+      alloc.set(c, (alloc.get(c) ?? 0) + give);
+      leftover -= give;
+    }
+  }
+
+  let removed = 0;
+  for (const c of pool) {
+    const take = Math.min(alloc.get(c) ?? 0, remaining[c]);
+    remaining[c] -= take;
+    removed += take;
+  }
+  return removed;
+}
+
+/**
+ * Apply loyalty tier + promo codes to an order.
+ *
+ * @param order    the order; `order.coupons` are the codes the customer typed,
+ *                 in entry order.
+ * @param catalog  the known coupon definitions. Codes in `order.coupons` are
+ *                 looked up here; later entries win on a duplicate code.
+ * @param options  see {@link ApplyDiscountsOptions}.
+ *
+ * SPEC DECISIONS baked in:
+ *  - Discount base is the ITEMS subtotal only; shipping is added on top,
+ *    untouched (ticket never says discounts touch delivery).
+ *  - Stacking is SEQUENTIAL: tier first, off the whole merchandise; then each
+ *    coupon in entry order, each working on what the previous ones left. Two
+ *    10%+15% codes cost the customer 23.5%, not 25%.
+ *  - ALL valid coupons apply (not "the best one"), in the order typed.
+ *  - A category-scoped coupon discounts only that category's remaining amount.
+ *  - A coupon's `minSubtotalKopecks` is checked against the ORIGINAL items
+ *    subtotal, before any discount — deterministic regardless of coupon order.
+ *  - Invalid coupons (unknown / expired / min not met / duplicate / no eligible
+ *    items) are a SILENT no-op: not applied, listed in `rejectedCoupons`, never
+ *    thrown. Checkout must not crash on a bad code.
+ *  - A duplicate identical code counts ONCE; the repeat is rejected.
+ *  - Fixed-amount and percentage cuts are clamped so no category — and hence the
+ *    order total — can go below zero. The floor is 0 merchandise; the customer
+ *    still pays shipping.
+ */
+export function applyDiscounts(
+  order: Order,
+  catalog: readonly Coupon[],
+  options: ApplyDiscountsOptions = {},
+): DiscountBreakdown {
+  const now = options.now ?? new Date();
+
+  const remaining: Record<Category, number> = { digital: 0, fresh: 0, standard: 0 };
+  for (const item of order.items) {
+    remaining[item.category] += lineTotalKopecks(item);
+  }
+  const sumRemaining = (): number => CATEGORIES.reduce((s, c) => s + remaining[c], 0);
+
+  const originalSubtotal = subtotalKopecks(order);
+
+  // --- Tier -----------------------------------------------------------------
+  // SPEC DECISION: tier % applies to the whole merchandise subtotal and always
+  // runs BEFORE any coupon.
+  const tPct = tierPercent(order);
+  let tierDiscount = 0;
+  if (tPct > 0) {
+    const cut = roundKopecks((sumRemaining() * tPct) / 100);
+    tierDiscount = applyCutAcross(remaining, CATEGORIES, cut);
+  }
+
+  // --- Coupons ------------------------------------------------------------
+  const catalogByCode = new Map<string, Coupon>();
+  for (const c of catalog) catalogByCode.set(c.code, c);
+
+  const appliedCoupons: AppliedCoupon[] = [];
+  const rejectedCoupons: RejectedCoupon[] = [];
+  const seen = new Set<string>();
+  let couponDiscount = 0;
+
+  for (const code of order.coupons) {
+    if (seen.has(code)) {
+      rejectedCoupons.push({ code, reason: "duplicate" });
+      continue;
+    }
+    seen.add(code);
+
+    const coupon = catalogByCode.get(code);
+    if (!coupon) {
+      rejectedCoupons.push({ code, reason: "unknown-code" });
+      continue;
+    }
+    if (isExpired(coupon, now)) {
+      rejectedCoupons.push({ code, reason: "expired" });
+      continue;
+    }
+    if (
+      coupon.minSubtotalKopecks !== undefined &&
+      originalSubtotal < coupon.minSubtotalKopecks
+    ) {
+      rejectedCoupons.push({ code, reason: "min-subtotal-not-met" });
+      continue;
+    }
+
+    const scopeCats: readonly Category[] = coupon.category ? [coupon.category] : CATEGORIES;
+    if (coupon.category && !order.items.some((i) => i.category === coupon.category)) {
+      rejectedCoupons.push({ code, reason: "no-eligible-items" });
+      continue;
+    }
+
+    const scopeTotal = scopeCats.reduce((s, c) => s + remaining[c], 0);
+    let cut: number;
+    if (coupon.kind === "percent") {
+      cut = roundKopecks((scopeTotal * clamp(coupon.value, 0, 100)) / 100);
+    } else {
+      // Fixed: value is already in kopecks. Clamp to what the scope still holds.
+      cut = clamp(coupon.value, 0, scopeTotal);
+    }
+
+    const removed = applyCutAcross(remaining, scopeCats, cut);
+    couponDiscount += removed;
+    appliedCoupons.push({ code: coupon.code, kind: coupon.kind, discountKopecks: removed });
+  }
+
+  const merchandiseAfter = sumRemaining();
+  const ship = shippingKopecks(order);
+
+  return {
+    subtotalKopecks: originalSubtotal,
+    shippingKopecks: ship,
+    tierPercent: tPct,
+    tierDiscountKopecks: tierDiscount,
+    couponDiscountKopecks: couponDiscount,
+    totalDiscountKopecks: tierDiscount + couponDiscount,
+    merchandiseAfterDiscountKopecks: merchandiseAfter,
+    totalKopecks: merchandiseAfter + ship,
+    appliedCoupons,
+    rejectedCoupons,
+  };
+}
