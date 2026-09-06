@@ -46,3 +46,11 @@ Spec Kit і BMAD обидва потребують `uv`.
 - рушій знижок + тести за ID критеріїв + `docs/traceability.md` (Task C)
 - `docs/ab-validation.md` (Task D)
 - `docs/task-e-bonus.md` (бонус, Task E)
+
+**Мова документів у цій здачі.** Специфікація (`docs/spec/pricing-discounts.md`)
+і простежуваність (`docs/traceability.md`) — українською: це робочі документи
+автора, за якими ухвалювались рішення. Звіти про процес (`docs/sdd-tool.md`,
+`docs/ab-validation.md`, `docs/task-e-bonus.md`, `docs/task-e/`) і все, що
+лежить поруч із кодом — `openspec/`, `docs/run-b/`, коментарі, назви тестів —
+англійською: їх читають разом із кодом. `AGENTS.md` дозволяє обидві мови, тож
+поділ проведено за читачем, а не випадково.

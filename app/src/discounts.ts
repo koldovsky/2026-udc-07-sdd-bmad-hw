@@ -1,6 +1,6 @@
 // Loyalty-tier and coupon discounts. Implements docs/spec/pricing-discounts.md:
 // section 6 fixes the contract and the twelve calculation steps, section 4 holds
-// the decisions D-1…D-32 referenced by id in the comments below.
+// the decisions D-1…D-33 referenced by id in the comments below.
 //
 // Each numbered step of section 6 that can stand on its own is a named function
 // here, so `docs/traceability.md` can point a criterion at the symbol that
@@ -101,7 +101,9 @@ function categoryTotals(order: Order): Map<string, number> {
 
 /**
  * Codes are compared after trimming and upper-casing (D-15). A non-string
- * becomes the empty string, which is then dropped as untyped (D-21, D-29).
+ * becomes the empty string, which is then dropped as untyped (D-21, D-29) on the
+ * typed side, and makes the entry unreachable rather than fatal on the catalog
+ * side (D-33).
  */
 function normaliseCode(value: unknown): string {
   return typeof value === "string" ? value.trim().toUpperCase() : "";
@@ -321,8 +323,8 @@ function orderedRejections(
  * Never throws PROVIDED the argument shapes match this signature at runtime —
  * `order.items` and `order.coupons` are real arrays, `catalog` is a real array
  * of objects, `now` is a Date instance (section 3, level 1). Bad VALUES inside
- * those shapes never throw: they are turned into a rejected coupon (D-25, D-27,
- * D-28, D-29, D-30, D-31, D-32).
+ * those shapes never throw: they are turned into a rejected coupon, or into an
+ * unreachable catalog entry (D-25, D-27, D-28, D-29, D-30, D-31, D-32, D-33).
  *
  * Returns a freshly built object on every call: neither the breakdown, nor
  * `rejectedCoupons`, nor its elements share references with `order` or
