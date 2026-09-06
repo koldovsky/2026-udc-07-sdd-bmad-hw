@@ -48,7 +48,7 @@ hand against the templates and per-artifact instructions carried in the schema:
 | `proposal.md` | 74 | Why, What Changes, Capabilities, Impact |
 | `specs/order-discounts/spec.md` | 589 | 11 requirements, 58 scenarios — one per acceptance criterion |
 | `design.md` | 242 | D-1…D-32 as decisions with rationale, risks, O-1…O-3 |
-| `tasks.md` | 110 | 34 checkbox tasks, each naming its own verification |
+| `tasks.md` | 114 | 34 checkbox tasks, each naming its own verification and the criteria it is checked against |
 
 The tool contributed the **shape** of those files, not their content: an
 artifact graph (`proposal` → `specs` → `design` → `tasks`, with `tasks` blocked
@@ -85,18 +85,24 @@ one thing at a time, and running `openspec validate --strict`:
 | The `specs/` directory removed entirely | **ERROR** — "Change must have at least one delta", with a fix hint |
 | A requirement left with zero scenarios (all 5 demoted from `####` to `###`) | **ERROR** — "must include at least one scenario", plus an INFO about the stray header |
 | 4 of that requirement's 5 scenarios demoted, 1 left intact | **valid** — 54 scenarios parsed instead of 58, exit code 0; one INFO per demoted header, no warning and no error |
+| The *first* 4 demoted, so the 5th sits under an ignored `###` header | **valid** — the requirement reaches **zero** parsed scenarios and 53 of 58 survive, with no error at all |
 | The `## Purpose` section deleted | **valid** — despite the schema instruction requiring it |
 
-So the validator checks structure at the *requirement* level and stops there. A
-requirement that loses every scenario is caught; a requirement that loses most of
-them is not. The dropped criteria are not entirely unannounced — each one draws
+So the validator checks structure at the *requirement* level and stops there, and
+even that check is positional rather than absolute. Demoting all 5 headers raises
+the ERROR, because the requirement's body then ends immediately. Demoting the
+first 4 leaves the fifth attached to the ignored `###` section above it, so the
+same requirement reaches zero parsed scenarios while the verdict stays `Change is
+valid` — the "at least one scenario" rule counts what the parser attributed, not
+what the author wrote. A requirement that loses most of its scenarios is never
+caught. The dropped criteria are not entirely unannounced — each one draws
 an INFO line naming the header — but that line is phrased as a heading-style
 hint, `is not a "### Requirement:" header and is ignored by validation`, it is
 not raised to a warning by `--strict`, and the verdict stays `Change is valid`
-with exit code 0. Nothing in the output says that four acceptance criteria left
-the parsed model. The schema's own instruction warns that a three-hashtag
-scenario "will fail silently" — that warning is accurate at the level that
-matters, and `--strict` does not lift it.
+with exit code 0. Nothing in the output says that four or five acceptance
+criteria left the parsed model. The schema's own instruction warns that a
+three-hashtag scenario "will fail silently" — that warning is accurate at the
+level that matters, and `--strict` does not lift it.
 
 **4. A delta vocabulary.** `ADDED` / `MODIFIED` / `REMOVED` / `RENAMED`, with the
 rule that a `MODIFIED` requirement must carry its full updated text. This change
@@ -123,6 +129,16 @@ tool's format has no place for a rationale column, so the decisions were
 restated as `design.md` and the criteria as scenarios. Nothing in the tool
 performs or checks that translation.
 
+The tool does have a lever here that was not used: `openspec init --language uk`
+writes a `context:` block into `openspec/config.yaml` — "All artifacts must be
+written in uk. Keep OpenSpec structural headings and SHALL/MUST keywords in
+English" — which is advisory text for whoever writes the artifacts, not a
+translator. English was chosen anyway, because everything this repository puts on
+disk is English and the delta spec is read alongside the code. The flag would
+have removed the translation, not the restatement: the rationale column still has
+no home in the format, and nothing on either setting checks one document against
+the other.
+
 **Cross-document consistency.** Nothing in OpenSpec knows that
 `docs/spec/pricing-discounts.md` exists, so nothing detects it drifting away from
 `openspec/changes/add-discount-engine/specs/`. The 58 scenario ids were chosen to
@@ -143,6 +159,21 @@ least favourable case — everything it exists to prompt for had already been
 answered. Its enforced order and its templates are aimed at the opposite
 situation, where the decisions do not exist yet, and none of that could show
 itself here.
+
+A second bias runs the same way and is this repository's own doing. `openspec
+init --tools none` switched off the assistant-integration files, which are the
+part of OpenSpec that drives the requirements → specification → plan loop from
+inside an agent; what remained was the CLI, the schema and the validator. The
+reasons are given above and still hold, but they mean "the tool supplied shape,
+not content" describes the configuration that was actually run, not OpenSpec at
+its full extent.
+
+A third limit is scope. OpenSpec's cycle does not end at the plan: `openspec
+instructions apply` guides the implementation and `openspec archive` folds a
+finished change into `openspec/specs/`, which is why that directory is still
+empty here. Task B stops at the task list, so neither was run, and nothing above
+is evidence about them. This verdict covers the planning and validation phases
+only — two of the three the tool offers.
 
 Two costs are worth recording against it. The full-fidelity port duplicated a
 940-line specification into a 589-line English delta, and the two can now drift;

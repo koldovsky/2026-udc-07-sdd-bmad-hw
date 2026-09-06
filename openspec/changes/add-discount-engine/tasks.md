@@ -49,8 +49,9 @@
   and reject as `min-subtotal` without setting `minSubtotalKopecks` when it is
   not a finite non-negative integer; verify against AC-40 and AC-57
 - [ ] 5.2 Compare the threshold with the original subtotal and reject as
-  `min-subtotal` carrying that threshold when unmet; verify against AC-15, and
-  confirm the comparison ignores the coupon's category with AC-35
+  `min-subtotal` carrying that threshold when unmet; verify against AC-15,
+  confirm the comparison ignores the coupon's category with AC-35, and confirm
+  it uses the subtotal before the tier discount with AC-6
 - [ ] 5.3 Confirm a threshold of 0 counts as present and met (AC-39) and that
   expiry is reported ahead of the threshold (AC-56)
 
@@ -58,12 +59,15 @@
 
 - [ ] 6.1 Choose the base: `remainder` when `coupon.category === undefined`,
   otherwise `idiv(categoryTotal(category) * (100 - tierPercent(order)), 100)`;
-  verify the `undefined` comparison with AC-51 and AC-52
+  verify the `undefined` comparison with AC-51 and AC-52, the whole-order base
+  with AC-2 and AC-23, and the category base with AC-5
 - [ ] 6.2 Compute the discount in this order — non-integer `value` → 0,
   `value <= 0` → 0, `percent` → `min(idiv(base * value, 100), base)`, `fixed` →
-  `min(value, base)`, any other `kind` → 0; verify against AC-37, AC-25, AC-42
-- [ ] 6.3 Confirm the clamp holds at both ends by verifying AC-12, AC-24 and
-  AC-53
+  `min(value, base)`, any other `kind` → 0; verify against AC-37, AC-25 and
+  AC-42, the fractional `fixed` value with AC-38, and the downward rounding of
+  a percentage discount with AC-13
+- [ ] 6.3 Confirm the clamp holds at both ends by verifying AC-12, AC-24,
+  AC-53 and the fixed-value clamp to a category base with AC-20
 - [ ] 6.4 Confirm the base rounds down exactly once by verifying AC-19 and AC-36
 
 ## 7. Selection and rejection
