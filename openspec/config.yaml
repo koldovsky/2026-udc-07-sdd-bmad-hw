@@ -1,0 +1,42 @@
+schema: spec-driven
+
+context: |
+  Стек: TypeScript + Node, тести на Vitest (`cd app && npm test`).
+  Гроші — цілими копійками (1 грн = 100 копійок); показуються в гривнях.
+  `app/src/types.ts` (Order, LineItem, Coupon) і `app/src/pricing.ts`
+  (subtotalKopecks, shippingKopecks, tierPercent) — захищений контракт,
+  сигнатури не змінювати.
+  Джерело рішень щодо неоднозначностей — docs/spec/pricing-discounts.md
+  (таблиця D-1…D-18), критерії приймання AC-1…AC-14.
+  Рушій знижок реалізується в app/src/discounts.ts, тести названі за ID AC.
+
+# Project context (optional)
+# This is shown to AI when creating artifacts.
+# Add your tech stack, conventions, style guides, domain knowledge, etc.
+# Example:
+#   context: |
+#     Tech stack: TypeScript, React, Node.js
+#     We use conventional commits
+#     Domain: e-commerce platform
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
