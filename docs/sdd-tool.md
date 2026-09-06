@@ -11,6 +11,12 @@ a second toolchain before the exercise could start. The tool is fed the
 specification written in Task A (`docs/spec/pricing-discounts.md`: 32 decisions,
 58 acceptance criteria, 5 invariants).
 
+> Every count in this section is the state at the end of Task B. Tasks C and E
+> later added D-33 and AC-59 … AC-61, so the current document holds 33 decisions
+> and 61 criteria; both addenda at the end record what moved and why. The counts
+> are left as measured rather than rewritten, because the point below is what
+> the tool did and did not catch at the time it ran.
+
 Commands run:
 
 ```bash
@@ -228,3 +234,44 @@ hand. Nothing in the tool ran the tests, and nothing in it knows
 `app/src/discounts.ts` exists. The link between the specification and the
 implementation is still `docs/traceability.md` and the criterion ids in the test
 names — both of which this repository added.
+
+## Second addendum — the second change, run in Task E
+
+The paragraph above ends on a promise: that the `ADDED` / `MODIFIED` vocabulary
+would pay off on the second change, not the first. Task E produced a second
+change, so the promise is now measurable.
+
+`harden-catalog-code` closes a contradiction the Task E ambiguity reviewer found
+in `docs/spec/pricing-discounts.md` (see `docs/task-e-bonus.md`). It modifies one
+requirement — `Malformed catalog data never raises the total` — and adds one
+scenario, AC-61.
+
+**What the vocabulary actually bought.** The delta names the requirement it
+edits, so the change is reviewable as "this requirement, this new sentence, this
+new scenario" rather than as a diff against a 590-line file. `openspec archive`
+reported `Totals: + 0, ~ 1, - 0, → 0` and rewrote exactly that requirement in
+`openspec/specs/order-discounts/spec.md`; the live spec now holds 11
+requirements and 61 scenarios. That is the mechanism working as advertised.
+
+**What it cost.** OpenSpec requires a `MODIFIED` requirement to carry its full
+updated text, so the delta restates seven unchanged scenarios in order to add
+one — 90 lines written to change 3. On a requirement this size the review benefit
+and the restatement cost are roughly even; on a requirement with thirty scenarios
+the vocabulary would stop helping.
+
+**Where the tool was silent again, and this time it matters more.** `openspec
+validate harden-catalog-code --strict` reported `valid`, exactly as it had for
+`add-discount-engine` while the same contradiction was open. The defect was not a
+missing scenario — the sort of absence `--strict` looks for — but two present
+statements disagreeing: section 3 of the specification called the behaviour
+undefined, section 7 and the JSDoc promised it never throws. Nothing in the tool
+reads either document, so nothing could compare them. The Task C reverse check
+also examined this exact branch and closed it, because it checked against one of
+the two sections. It took an agent whose only job was to look for two readings of
+the same text.
+
+That sharpens the Task B conclusion rather than reversing it. OpenSpec supplied
+structure, an artifact order, a parsed model and a delta vocabulary that has now
+demonstrably earned its keep once. It has never had an opinion about the domain,
+and its `valid` verdict continues to mean "the file is shaped correctly", which is
+a narrower claim than it reads.

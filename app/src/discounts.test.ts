@@ -277,6 +277,37 @@ describe("catalog lookup", () => {
     );
   });
 
+  it("AC-61: a non-string catalog code is unreachable, not fatal", () => {
+    const corrupt = coupon({ code: malformed<string>(null) });
+
+    // In front of a valid entry: the bad key must not stop the lookup finding
+    // the good one, and must not throw on the way past it.
+    const withValid = priceOrder(
+      order({ coupons: ["SAVE10"] }),
+      [corrupt, coupon()],
+      NOW,
+    );
+    expect(withValid).toStrictEqual(
+      breakdown({
+        subtotalKopecks: 100_000,
+        couponDiscountKopecks: 10_000,
+        appliedCouponCode: "SAVE10",
+        totalKopecks: 94_900,
+      }),
+    );
+
+    // Alone in the catalog: the entry matches nothing, so the typed code is
+    // reported as unknown rather than swallowed (D-33, I-1).
+    const alone = priceOrder(order({ coupons: ["SAVE10"] }), [corrupt], NOW);
+    expect(alone).toStrictEqual(
+      breakdown({
+        subtotalKopecks: 100_000,
+        rejectedCoupons: [{ code: "SAVE10", reason: "unknown" }],
+        totalKopecks: 104_900,
+      }),
+    );
+  });
+
   it("AC-44: an empty catalog rejects every code and still prices the order", () => {
     const result = priceOrder(
       order({ coupons: ["SAVE10", "MINUS50"] }),

@@ -64,7 +64,9 @@ Given `docs/spec/pricing-discounts.md` and asked to implement it.
   added none of its own; the reverse traceability check in `docs/traceability.md`
   records the search for unrequested behaviour.
 - **Tests:** 60 of its own, each named after the acceptance criterion it covers
-  (AC-1 … AC-60) — 68 with the 8 seeded `pricing` tests. Branch coverage of `discounts.ts`
+  (AC-1 … AC-60) — 68 with the 8 seeded `pricing` tests. Both counts are the
+  state at the time of this comparison; Task E later added D-33 and AC-61, and
+  the figures in `docs/traceability.md` are the current ones. Branch coverage of `discounts.ts`
   is 100%. Edge cases are covered because the specification required them:
   empty order, discount larger than the subtotal, half-kopeck rounding, invalid
   `now`, impossible calendar dates, non-integer coupon values.

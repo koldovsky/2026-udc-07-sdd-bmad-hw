@@ -470,9 +470,13 @@ The system SHALL constrain every coupon discount to the closed range
 `[0, base]`, so that no coupon increases the amount due and no coupon gives away
 more than the scope it covers. A `value` that is zero or negative, a `value` that
 is not a finite integer, and a `kind` that is neither `"percent"` nor `"fixed"`
-SHALL each produce a discount of 0. The catalog SHALL NOT otherwise be
-validated: the first entry matching a normalised code SHALL be used. Given
-argument shapes that match the declared signature, `priceOrder` SHALL NOT throw.
+SHALL each produce a discount of 0. A catalog entry whose `code` is not a string
+SHALL normalise to the empty string and SHALL therefore match no typed code,
+because typed codes that are empty after normalisation are dropped before the
+lookup; such an entry is unreachable rather than fatal. The catalog SHALL NOT
+otherwise be validated: the first entry matching a normalised code SHALL be
+used. Given argument shapes that match the declared signature, `priceOrder`
+SHALL NOT throw.
 
 #### Scenario: AC-12 — a fixed coupon larger than the order
 
@@ -515,6 +519,19 @@ argument shapes that match the declared signature, `priceOrder` SHALL NOT throw.
   and every numeric field satisfies `Number.isSafeInteger` — an implementation
   testing `Number.isNaN` instead of `Number.isInteger` would cap `Infinity` at
   the base and hand over the whole order
+
+#### Scenario: AC-61 — a non-string catalog code is unreachable, not fatal
+
+- **WHEN** the catalog holds an entry with `code: null` in front of a valid
+  `SAVE10` at 10%, and a customer with no tier types `SAVE10` on an order of
+  100 000 of `standard` items
+- **THEN** no exception is thrown, the corrupt entry matches nothing, `SAVE10`
+  applies for a discount of 10 000, and the total is 94 900
+- **AND WHEN** the corrupt entry is the only one in the catalog
+- **THEN** `SAVE10` is rejected with reason `unknown`, the coupon discount is 0,
+  the total is 104 900, and no exception is thrown — an implementation
+  normalising `coupon.code` without a type check calls `null.trim()` and takes
+  the checkout page down
 
 #### Scenario: AC-42 — an unrecognised coupon kind
 
