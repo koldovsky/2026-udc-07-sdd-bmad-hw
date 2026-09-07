@@ -32,6 +32,12 @@ function percentOf(baseKopecks: number, percent: number): number {
   return Math.round((baseKopecks * pct) / 100);
 }
 
+/** D-15: fixed amount capped at its base; a non-integer or non-finite value has no effect. */
+function fixedAmountOf(baseKopecks: number, value: number): number {
+  if (!Number.isInteger(value)) return 0;
+  return Math.max(0, Math.min(value, baseKopecks));
+}
+
 /** D-11: valid strictly before expiresAt; an unparseable date cannot prove validity. */
 function isExpired(coupon: Coupon, now: Date): boolean {
   const expiry = Date.parse(coupon.expiresAt);
@@ -87,7 +93,7 @@ export function priceOrder(order: Order, catalog: Coupon[], now: Date = new Date
     let discount =
       coupon.kind === "percent"
         ? percentOf(base, coupon.value)
-        : Math.max(0, Math.min(coupon.value, base)); // D-15: fixed amount, capped at its base
+        : fixedAmountOf(base, coupon.value); // D-15: fixed amount, capped at its base
     discount = Math.min(discount, remaining); // D-7: never drive the remainder below 0
 
     if (discount <= 0) continue; // D-14 / D-17: a 0-effect coupon is not "applied"; no category slot taken
