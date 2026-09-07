@@ -12,10 +12,11 @@ specification written in Task A (`docs/spec/pricing-discounts.md`: 32 decisions,
 58 acceptance criteria, 5 invariants).
 
 > Every count in this section is the state at the end of Task B. Tasks C and E
-> later added D-33 and AC-59 … AC-61, so the current document holds 33 decisions
-> and 61 criteria; both addenda at the end record what moved and why. The counts
-> are left as measured rather than rewritten, because the point below is what
-> the tool did and did not catch at the time it ran.
+> later added D-33 and AC-59 … AC-61, and the pull-request review added D-34 and
+> AC-62, so the current document holds 34 decisions and 62 criteria; the three
+> addenda at the end record what moved and why. The counts are left as measured
+> rather than rewritten, because the point below is what the tool did and did
+> not catch at the time it ran.
 
 Commands run:
 
@@ -275,3 +276,28 @@ structure, an artifact order, a parsed model and a delta vocabulary that has now
 demonstrably earned its keep once. It has never had an opinion about the domain,
 and its `valid` verdict continues to mean "the file is shaped correctly", which is
 a narrower claim than it reads.
+
+## Third addendum — the third change, run after the pull-request review
+
+`clamp-percent-before-multiply` closes a defect the automated reviewer found on
+the submission pull request: a percentage `value` past the overflow point made
+`base × value` `Infinity`, `idiv` returned `NaN`, and `NaN` reached
+`totalKopecks` (see the reverse check in `docs/traceability.md`).
+
+**What the tool did.** The same as on the second change, one size larger. Two
+`MODIFIED` requirements this time — one for the arithmetic, one for a promise
+about catalog order that disagreed with AC-33 — and OpenSpec's rule that a
+modified requirement carries its full updated text meant restating 10 scenarios
+to add 1 and edit 2 sentences. `openspec validate --strict`: valid.
+`openspec archive`: `Totals: + 0, ~ 2, - 0, → 0`, and the live capability spec
+now holds 11 requirements and 62 scenarios. The delta vocabulary again made the
+change reviewable as an edit rather than as a diff of a 600-line file, and again
+charged for it in restatement.
+
+**Where it was silent, for the third time.** `--strict` had called both earlier
+changes valid while this defect was open, and it called this one valid too. The
+defect was a false sentence — section 3 asserted that an oversized `value`
+"does not affect the result" — and the validator does not read assertions, only
+structure. Two of the three real defects in this repository were found by
+agents reading prose for contradictions, one by an automated reviewer reading
+code against prose, and none by the tool.

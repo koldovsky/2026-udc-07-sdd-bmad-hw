@@ -114,7 +114,9 @@ TypeError: Cannot read properties of null (reading 'trim')
 ```
 
 The guard was restored and the full suite is green: 69 tests, 8 seeded `pricing`
-plus 61 named after criteria AC-1 … AC-61.
+plus 61 named after criteria AC-1 … AC-61. Those counts are the state at the end
+of Task E; the pull-request review later added D-34 and AC-62, and the current
+figures are in `docs/traceability.md`.
 
 ### Not confirmed: three findings that failed verification
 

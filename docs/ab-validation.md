@@ -156,7 +156,7 @@ Identical `Order`, `Coupon[]` and `now` passed to `priceOrder` (A) and
 | S5 | customer leaves the field blank (three spaces) | 104 900 — ignored, no rejection | 104 900 — rejected `unknown-code` | B shows "no such code" under an empty field |
 | S6 | coupon with `expiresAt: "2026-02-30"`, now 2026-03-01 | 104 900 — rejected `expired` | 94 900 — applied | `Date.parse` rolls 30 February to 2 March; a one-character typo extends the campaign |
 | S7 | `now` is `new Date("not a date")`, coupon expired in 2020 | 104 900 — rejected `expired` | 94 900 — applied | every expired coupon in the catalog becomes live |
-| S8 | fixed coupon with `value: 1234.5` | 104 900 — discount 0, rejected `too-small` | 103 665 — discount 1234.5 | a fractional kopeck reaches `totalKopecks`, which is exactly what point 6 of the ticket forbids |
+| S8 | fixed coupon with `value: 1234.5` | 104 900 — discount 0, rejected `too-small` | 103 665 — discount 1234.5 | B's breakdown stops adding up: `amountKopecks` and `totalDiscountKopecks` hold 1234.5, while the line allocation writes off a whole 1 235, so `discountedSubtotalKopecks` is 98 765 and the total stays an integer. 100 000 − 1 234.5 ≠ 98 765: the fractional value the ticket's point 6 forbids is in the breakdown the customer is shown, not in the total |
 | S9 | same code typed twice | 94 900, no rejection shown | 94 900, `duplicate-code` shown | same money, different message to the customer |
 | S10 | catalog holds `DUP` twice — 10% first, 50% second — code typed once | 94 900 — the first row applies | 54 900 — the second row applies | a duplicated row silently upgrades the campaign; 400 грн on a 1 000 грн basket |
 | S11 | coupon with `kind: "bogus"`, `value: 10` | 104 900 — discount 0, rejected `too-small` | 104 890 — 10 kopecks off | an unreadable `kind` is billed as a fixed discount instead of being refused |
@@ -206,7 +206,8 @@ the business already knew how to ask.
 It won on the questions nobody asks. Seven of Run B's divergences are defects
 rather than policy choices: a coupon dated 30 February stays valid for two extra
 days, an invalid `now` revives every expired coupon, a fractional `value` puts a
-fractional kopeck into the total, a `category` field holding `null` turns a
+fractional amount into the discount lines and leaves the breakdown not adding
+up, a `category` field holding `null` turns a
 category coupon into an order-wide one, a threshold that is not a number stops
 being a threshold, an unreadable `kind` is billed as a fixed discount, and a
 duplicated catalog row lets the second one overwrite the first. On a 1 000 грн

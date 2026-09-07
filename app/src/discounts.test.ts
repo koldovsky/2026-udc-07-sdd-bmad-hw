@@ -942,6 +942,23 @@ describe("discount base and amount", () => {
     );
     expect(amounts(result).every(Number.isSafeInteger)).toBe(true);
   });
+
+  it("AC-62: an out-of-range percentage cannot make the total NaN", () => {
+    const result = priceOrder(
+      order({ coupons: ["OVERFLOW"] }),
+      [coupon({ code: "OVERFLOW", value: Number.MAX_VALUE })],
+      NOW,
+    );
+    expect(result).toStrictEqual(
+      breakdown({
+        subtotalKopecks: 100_000,
+        couponDiscountKopecks: 100_000,
+        appliedCouponCode: "OVERFLOW",
+        totalKopecks: 4_900,
+      }),
+    );
+    expect(amounts(result).every(Number.isSafeInteger)).toBe(true);
+  });
 });
 
 describe("selection and rejection reasons", () => {

@@ -75,8 +75,10 @@ then taken from what remains. The percentages SHALL NOT be summed.
 When several distinct codes are typed, the system SHALL apply exactly one — the
 one producing the largest discount. Ties SHALL be broken in favour of the code
 typed earlier in `order.coupons`. Every other code that reached this stage SHALL
-be reported with reason `superseded`. Coupon discounts SHALL NOT be summed, and
-the result SHALL NOT depend on the order of entries in the catalog.
+be reported with reason `superseded`. Coupon discounts SHALL NOT be summed. The result
+SHALL NOT depend on the order of entries in the catalog when their normalised
+codes are unique; where two entries share a normalised code, the first SHALL
+win, as required by `Malformed catalog data never raises the total`.
 
 #### Scenario: AC-3 — the larger discount wins
 
@@ -422,7 +424,10 @@ present and `undefined`. The expiry check SHALL precede the threshold check.
 The system SHALL round each discount down to a whole kopeck and SHALL round the
 total not at all. Division by 100 SHALL be integer division, and no
 floating-point arithmetic SHALL be used for amounts. A `value` that is not a
-finite integer SHALL produce a discount of 0. Every numeric field of the
+finite integer SHALL produce a discount of 0. A percentage `value` of 100 or more
+SHALL produce a discount of exactly `base`, and SHALL do so without forming the
+product `base × value`, so that no `value` accepted by the finite-integer test
+can put a non-finite number into the breakdown. Every numeric field of the
 breakdown SHALL satisfy `Number.isSafeInteger` for any input within the stated
 input bounds — a subtotal of at most 100 000 000 000, a percentage `value` of at
 most 10 000 and a fixed `value` of at most 100 000 000 000.
@@ -463,6 +468,15 @@ most 10 000 and a fixed `value` of at most 100 000 000 000.
 - **THEN** the coupon discount is capped at its base of 100 000,
   `appliedCouponCode` is that coupon's code, the total is 4 900, and all five
   numeric breakdown fields satisfy `Number.isSafeInteger`
+
+#### Scenario: AC-62 — an out-of-range percentage cannot make the total NaN
+
+- **WHEN** a customer with no tier orders 100 000 of items and types a coupon
+  with `kind: "percent"` and `value: Number.MAX_VALUE`, which passes the
+  finite-integer test
+- **THEN** the coupon discount is its base of 100 000, the total is 4 900, and
+  all five numeric breakdown fields satisfy `Number.isSafeInteger` — in
+  particular none of them is `NaN`
 
 ### Requirement: Malformed catalog data never raises the total
 

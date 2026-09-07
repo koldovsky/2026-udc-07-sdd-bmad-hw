@@ -1,6 +1,6 @@
 // Loyalty-tier and coupon discounts. Implements docs/spec/pricing-discounts.md:
 // section 6 fixes the contract and the twelve calculation steps, section 4 holds
-// the decisions D-1…D-33 referenced by id in the comments below.
+// the decisions D-1…D-34 referenced by id in the comments below.
 //
 // Each numbered step of section 6 that can stand on its own is a named function
 // here, so `docs/traceability.md` can point a criterion at the symbol that
@@ -145,11 +145,18 @@ function expiresAtIsUsable(expiresAt: unknown): boolean {
  * The discount a coupon yields on `base`, always an integer in `[0, base]`
  * (step 6). The integer test comes first: `NaN <= 0` is false, so a NaN value
  * would otherwise reach the total (D-27).
+ *
+ * The percentage clamp precedes the multiplication (D-34). `Number.MAX_VALUE`
+ * passes the integer test, and `base * value` would then be `Infinity`, from
+ * which `idiv` returns NaN and `Math.min` propagates it into the total.
  */
 function discountFor(coupon: Coupon, base: number): number {
   if (!Number.isInteger(coupon.value)) return 0; // D-27
   if (coupon.value <= 0) return 0; // D-23
-  if (coupon.kind === "percent") return Math.min(idiv(base * coupon.value), base);
+  if (coupon.kind === "percent") {
+    if (coupon.value >= 100) return base; // D-34
+    return idiv(base * coupon.value);
+  }
   if (coupon.kind === "fixed") return Math.min(coupon.value, base);
   return 0; // D-28: an unrecognised kind is not a guess
 }
@@ -324,7 +331,8 @@ function orderedRejections(
  * `order.items` and `order.coupons` are real arrays, `catalog` is a real array
  * of objects, `now` is a Date instance (section 3, level 1). Bad VALUES inside
  * those shapes never throw: they are turned into a rejected coupon, or into an
- * unreachable catalog entry (D-25, D-27, D-28, D-29, D-30, D-31, D-32, D-33).
+ * unreachable catalog entry (D-25, D-27, D-28, D-29, D-30, D-31, D-32, D-33,
+ * D-34).
  *
  * Returns a freshly built object on every call: neither the breakdown, nor
  * `rejectedCoupons`, nor its elements share references with `order` or
