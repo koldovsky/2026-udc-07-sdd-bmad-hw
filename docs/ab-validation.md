@@ -16,7 +16,7 @@
 
 ## Прогін B — ad-hoc
 
-**Новий** ізольований прогін. Агенту дано **лише** `materials/feature-request.md` — без спеки. Той самий хост і модель. Спеку, `openspec/` і наявний `discounts.ts` читати заборонено.
+**Новий** чат: окремий агентний сеанс без історії прогону A (субагент у ізольованому worktree; повідомлення й рішення чату A йому не передавались). Агенту дано **лише** `materials/feature-request.md` — без спеки. Той самий хост і модель. Спеку, `openspec/` і наявний `discounts.ts` читати заборонено.
 
 - **Що вийшло:** перезаписаний `app/src/discounts.ts` у worktree. Сигнатура інша: `priceOrder(order, catalog = [], now: Date = new Date())`. У breakdown зайві поля, яких спека не просила: `totalDiscountKopecks`, `merchandiseKopecks`, `appliedCouponCodes`. Залишки ведуться **по категоріях** (три відра), не по рядках. Нескоупований фікс з’їдає відра в порядку `standard → fresh → digital`.
 - **Які розвилки він вирішив мовчки:**

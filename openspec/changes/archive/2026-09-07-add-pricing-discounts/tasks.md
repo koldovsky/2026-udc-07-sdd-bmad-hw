@@ -42,7 +42,10 @@ Default `nowIso` in tests: `2026-09-06T12:00:00.000Z`. Country `UA` unless state
 - [x] 3.10 Add test `AC-10: two lines round separately` — two `standard` lines of 15, gold, no coupons → tier 4, shipping 4900, total 4926. Verify: that test passes.
 - [x] 3.11 Add test `AC-11: minSubtotal not met` — one item 40000, none, 10% `minSubtotalKopecks` 50000 → coupon 0, tier 0, shipping 4900, total 44900. Verify: that test passes.
 - [x] 3.12 Add test `AC-12: duplicate and unknown codes` — one item 100000, none, `["SAVE10","SAVE10","UNKNOWN"]`, catalog only valid 10% `SAVE10` → coupon 10000, total 94900. Verify: that test passes.
+- [x] 3.13 Add test `AC-13: Silver order without coupons` — one `standard` item 100000, silver, no coupons → tier 5000, coupon 0, shipping 4900, total 99900. Verify: that test passes.
+- [x] 3.14 Add test `AC-14: percent outside 0-100 is skipped` — one item 100000, none, `TOO_MUCH` 150% with valid expiry → coupon 0, shipping 4900, total 104900. Verify: that test passes.
+- [x] 3.15 Add test `AC-15: coupon codes are case-sensitive` — one item 100000, none, `"save10"` vs catalog `SAVE10` 10% → coupon 0, total 104900. Verify: that test passes.
 
 ## 4. Regression
 
-- [x] 4.1 Run `cd app && npm test` and `npm run typecheck`. Verify: all tests green, including the original 8 in `pricing.test.ts`, and every AC-1…AC-12 name appears in the vitest output.
+- [x] 4.1 Run `cd app && npm test` and `npm run typecheck`. Verify: all tests green, including the original 8 in `pricing.test.ts`, and every AC-1…AC-15 name appears in the vitest output.

@@ -284,4 +284,23 @@ describe("priceOrder", () => {
     expect(result.couponDiscountKopecks).toBe(0);
     expect(result.totalKopecks).toBe(104_900);
   });
+
+  it("AC-16: fixed coupon consumes items in array order", () => {
+    const result = priceOrder(
+      order({
+        items: [
+          item({ sku: "S-1", unitPriceKopecks: 10_000, category: "standard" }),
+          item({ sku: "F-1", unitPriceKopecks: 10_000, category: "fresh" }),
+        ],
+        coupons: ["FIX15000", "FRESH50"],
+      }),
+      [
+        coupon({ code: "FIX15000", kind: "fixed", value: 15_000 }),
+        coupon({ code: "FRESH50", kind: "percent", value: 50, category: "fresh" }),
+      ],
+      NOW,
+    );
+    // FIX15000 eats standard then 5000 of fresh; FRESH50 is 2500 of the leftover 5000.
+    expect(result.couponDiscountKopecks).toBe(17_500);
+  });
 });

@@ -16,7 +16,7 @@ There is no discount engine today. `tierPercent` is unused in totals.
 - Implement exactly `priceOrder(order, catalog, nowIso) → PriceBreakdown` as specified in `docs/spec/pricing-discounts.md` §5.
 - Keep the implementation a pure function: no I/O, no `Date.now()`.
 - Encode the normative algorithm below verbatim so two implementers cannot diverge by 1 kopeck.
-- Cover AC-1…AC-12 with vitest names that include the AC id.
+- Cover AC-1…AC-15 with vitest names that include the AC id.
 
 **Non-Goals:**
 
@@ -99,4 +99,4 @@ Integer percent check: `Number.isInteger(c.value)`. Same for fixed `value`.
 ## Migration Plan
 
 - Library-only change: add module + tests, re-export. No data migration, no rollback beyond revert of the new files.
-- Verify: `cd app && npm test` (8 existing + AC-1…AC-12) and `npm run typecheck`.
+- Verify: `cd app && npm test` (8 existing + AC-1…AC-15) and `npm run typecheck`.
