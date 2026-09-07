@@ -88,6 +88,12 @@
 
 - **AC-12:** КОЛИ один товар на 100_000 коп., `none`, у чеку `["SAVE10", "SAVE10", "UNKNOWN"]`, у каталозі лише валідний `SAVE10` на 10% без категорії, ТОДІ код застосовується один раз, невідомий пропускається, `couponDiscountKopecks = 10000`, `totalKopecks = 94900`.
 
+- **AC-13:** КОЛИ один товар `standard` на 100_000 коп., `customerTier: "silver"`, без промокодів, країна `UA`, ТОДІ `tierDiscountKopecks = 5000`, `couponDiscountKopecks = 0`, `shippingKopecks = 4900`, `totalKopecks = 99900`.
+
+- **AC-14:** КОЛИ один товар на 100_000 коп., `none`, валідний за датою купон `TOO_MUCH` з `kind: "percent"` і `value: 150` (поза 0–100), ТОДІ купон пропускається, `couponDiscountKopecks = 0`, `shippingKopecks = 4900`, `totalKopecks = 104900`.
+
+- **AC-15:** КОЛИ один товар на 100_000 коп., `none`, у чеку `"save10"`, у каталозі валідний `SAVE10` на 10% без категорії, ТОДІ коди не збігаються (регістр важливий, без `trim`), `couponDiscountKopecks = 0`, `totalKopecks = 104900`.
+
 ## 5. Контракт
 
 Типи `Order`, `LineItem`, `Coupon` — з `app/src/types.ts`, без змін.
@@ -158,5 +164,5 @@ cd app && npm test
 ```
 
 У виводі vitest кожен критерій має бути видимий за назвою тесту
-(`AC-1: …`, `AC-2: …`, … `AC-12: …`). Набір має бути зеленим разом із
+(`AC-1: …` … `AC-15: …`). Набір має бути зеленим разом із
 наявними 8 тестами `pricing.test.ts`. Окремо: `npm run typecheck`.

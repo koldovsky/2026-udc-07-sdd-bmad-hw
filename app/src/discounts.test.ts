@@ -242,4 +242,46 @@ describe("priceOrder", () => {
     expect(result.couponDiscountKopecks).toBe(10_000);
     expect(result.totalKopecks).toBe(94_900);
   });
+
+  it("AC-13: Silver order without coupons", () => {
+    const result = priceOrder(
+      order({
+        items: [item({ unitPriceKopecks: 100_000 })],
+        customerTier: "silver",
+      }),
+      [],
+      NOW,
+    );
+    expect(result.tierDiscountKopecks).toBe(5_000);
+    expect(result.couponDiscountKopecks).toBe(0);
+    expect(result.shippingKopecks).toBe(4_900);
+    expect(result.totalKopecks).toBe(99_900);
+  });
+
+  it("AC-14: percent outside 0-100 is skipped", () => {
+    const result = priceOrder(
+      order({
+        items: [item({ unitPriceKopecks: 100_000 })],
+        coupons: ["TOO_MUCH"],
+      }),
+      [coupon({ code: "TOO_MUCH", kind: "percent", value: 150 })],
+      NOW,
+    );
+    expect(result.couponDiscountKopecks).toBe(0);
+    expect(result.shippingKopecks).toBe(4_900);
+    expect(result.totalKopecks).toBe(104_900);
+  });
+
+  it("AC-15: coupon codes are case-sensitive", () => {
+    const result = priceOrder(
+      order({
+        items: [item({ unitPriceKopecks: 100_000 })],
+        coupons: ["save10"],
+      }),
+      [coupon({ code: "SAVE10", kind: "percent", value: 10 })],
+      NOW,
+    );
+    expect(result.couponDiscountKopecks).toBe(0);
+    expect(result.totalKopecks).toBe(104_900);
+  });
 });
