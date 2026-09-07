@@ -1,0 +1,21 @@
+diff --git a/app/src/index.ts b/app/src/index.ts
+index b496353..883bf23 100644
+--- a/app/src/index.ts
++++ b/app/src/index.ts
+@@ -5,3 +5,16 @@ export {
+   shippingKopecks,
+   tierPercent,
+ } from "./pricing.js";
++export type {
++  AppliedDiscount,
++  CouponRejectionReason,
++  CouponScope,
++  PriceBreakdown,
++  RejectedCoupon,
++} from "./discounts.js";
++export {
++  quoteOrder,
++  couponScope,
++  roundHalfUpKopecks,
++  allocateByLargestRemainder,
++} from "./discounts.js";
