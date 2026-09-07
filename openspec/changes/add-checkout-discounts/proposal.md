@@ -8,7 +8,7 @@ Loyalty tiers (`tierPercent`) exist in the pricing library but are never applied
 - Apply Silver 5% / Gold 10% to goods only, then apply typed promo codes sequentially (percent or fixed, optional category and min subtotal).
 - Ignore expired, unknown, duplicate, and ineligible codes without throwing.
 - Export `priceOrder` and `PriceBreakdown` from `app/src/discounts.ts` and re-export from `app/src/index.ts`.
-- Add vitest cases named `AC-1` … `AC-14` in `app/src/discounts.test.ts`.
+- Add vitest cases named `AC-1` … `AC-17` in `app/src/discounts.test.ts`.
 - Do **not** change `app/src/types.ts` shapes or `app/src/pricing.ts` signatures.
 
 ## Capabilities
