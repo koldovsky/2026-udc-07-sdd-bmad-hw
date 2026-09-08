@@ -105,7 +105,3 @@ OpenSpec created a structured change proposal pipeline under `openspec/changes/a
 - `openspec/changes/add-pricing-discounts/design.md` — Generated design
 - `openspec/changes/add-pricing-discounts/tasks.md` — Generated tasks
 - `docs/sdd-tool.md` — This file
-
-## Next Steps
-
-Ready for Task C: use `openspec/changes/add-pricing-discounts/tasks.md` as implementation guide. Each task corresponds to a code change that must be tested and traced back to a spec requirement.
