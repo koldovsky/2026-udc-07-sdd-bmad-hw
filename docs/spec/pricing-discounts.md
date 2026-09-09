@@ -89,8 +89,14 @@ ticket did not list.
 
 ## 4. Acceptance criteria
 
-17 criteria. Shipping is the UA domestic 4_900 unless stated. Boundary cases:
+19 criteria. Shipping is the UA domestic 4_900 unless stated. Boundary cases:
 **AC-4, AC-5, AC-6, AC-7, AC-9, AC-12**.
+
+> **AC-18 and AC-19 were added during Task C**, not written here first. The
+> reverse traceability check found that D-10 (exact, case-sensitive matching) and
+> D-17 (purity) were decided in §3 and implemented in code, yet no acceptance
+> criterion pinned either one down. Recorded rather than quietly back-dated —
+> see `docs/traceability.md`.
 
 - **AC-1** (D-2, D-16): WHEN a gold customer orders 100_000 (1 000 грн) to UA with no
   coupons, THEN `tierDiscountKopecks` = 10_000, `couponDiscountKopecks` = 0,
@@ -146,6 +152,12 @@ ticket did not list.
 - **AC-17** (D-2): WHEN a gold customer orders 20_000 of digital-only items, THEN tier =
   2_000, shipping = 0 (existing waiver), total = 18_000 — there is no shipping
   to discount and none is invented.
+- **AC-18** (D-10): WHEN the customer types `save10` and the catalog holds `SAVE10`, on a
+  100_000 order with no tier, THEN the code is refused `unknown` — matching is
+  exact and case-sensitive — coupon discount = 0, total = 104_900.
+- **AC-19** (D-17): WHEN an order is priced, THEN neither the order nor the catalog is
+  modified, AND pricing the same order, catalog and `now` a second time returns
+  an identical breakdown.
 
 ## 5. Contract
 
@@ -208,8 +220,11 @@ cd app && npm test
 ```
 
 Green, and the output lists a test per criterion above, named by its ID (e.g.
-`AC-3: two coupons on the same category`). Look for: 17 AC-named tests plus
-the original 8 in `pricing.test.ts`; `AC-16` asserted on every fixture, not
-just once; and no test in `discounts.test.ts` that does not carry an AC ID —
-a nameless test means behaviour this spec did not ask for. `npm run typecheck`
-passes with no `any`.
+`AC-3: two coupons on the same category`). Look for: **27 tests** — 19 AC-named
+in `discounts.test.ts` plus the original 8 in `pricing.test.ts`; `AC-16`
+asserted on every fixture, not just once; and no test in `discounts.test.ts`
+that does not carry an AC ID — a nameless test means behaviour this spec did not
+ask for. `npm run typecheck` passes with no `any`.
+
+The implementation is `app/src/discounts.ts`; `docs/traceability.md` maps each
+criterion to the code and the test that cover it.

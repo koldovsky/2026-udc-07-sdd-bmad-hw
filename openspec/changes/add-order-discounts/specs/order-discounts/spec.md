@@ -167,6 +167,13 @@ duplicate reasons above. Code matching SHALL be exact and case-sensitive.
 - **THEN** the subtotal is 0, the tier discount is 0, shipping is 0, the total is
   0, and the code is refused with reason `no-eligible-items`
 
+#### Scenario: AC-18 — a code differing only in case
+
+- **WHEN** the customer types `save10` on a 100_000 order with no tier and the
+  catalog holds `SAVE10`
+- **THEN** the code is refused with reason `unknown`, the coupon discount is 0,
+  and the total is 104_900
+
 ### Requirement: A minimum-subtotal coupon is judged on the gross subtotal
 
 The system SHALL compare a coupon's minimum-subtotal condition against the gross
@@ -206,3 +213,10 @@ and pricing SHALL NOT modify the order or the catalog.
   shipping yields exactly the reported total
 - **AND** the total is at least the shipping fee
 - **AND** each typed code appears exactly once as either applied or refused
+
+#### Scenario: AC-19 — pricing leaves its inputs alone and repeats identically
+
+- **WHEN** an order is priced, and then priced again with the same order, catalog
+  and evaluation instant
+- **THEN** neither the order nor the catalog has been modified
+- **AND** the second breakdown is identical to the first
