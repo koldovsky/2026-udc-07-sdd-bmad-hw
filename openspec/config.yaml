@@ -1,0 +1,52 @@
+schema: spec-driven
+
+context: |
+  Domain: order pricing for an e-commerce checkout (UDC Workshop 7 homework).
+  Tech stack: TypeScript (ES2022, NodeNext), Node 22+, vitest with colocated
+  *.test.ts. No runtime dependencies. Named exports only, no `any`, `.js`
+  extension on relative imports.
+
+  Code lives in app/src/:
+    - types.ts   — Order, LineItem, Coupon. PROTECTED: shapes must not change.
+    - pricing.ts — lineTotalKopecks, subtotalKopecks, shippingKopecks,
+                   tierPercent. PROTECTED: signatures and behaviour must not
+                   change. Reuse them; do not reimplement.
+    - the discount engine does not exist yet; it is what this change adds.
+
+  MONEY: whole kopecks (integers), displayed to people in hryvnia
+  (1 грн = 100 копійок). Never use floating-point arithmetic for amounts.
+  Rounding is a specification decision, never an implementation detail.
+
+  The authoritative decision record for this work is
+  docs/spec/pricing-discounts.md — 19 numbered decisions (D-1..D-19) with
+  reasons, and 17 acceptance criteria (AC-1..AC-17) with exact kopeck figures.
+  Preserve those D- and AC- ids verbatim in every artifact so the homework's
+  traceability table (docs/traceability.md) can point at both documents.
+  The originating business ticket is materials/feature-request.md — it is
+  deliberately ambiguous and must not be edited.
+
+  Tests must be named after the acceptance criterion they cover (e.g.
+  "AC-3: two coupons on the same category") so the spec link shows up in
+  test output.
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always include a "Non-goals" section
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
