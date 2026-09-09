@@ -156,7 +156,7 @@ Requirements`), а не копія специфікації. На `openspec arch
 ## Як відтворити
 
 ```bash
-npm install -g @fission-ai/openspec@latest
+npm install -g @fission-ai/openspec@1.12.0
 openspec init --tools claude --language uk
 openspec new change "add-order-discounts"
 openspec status --change add-order-discounts --json     # порядок артефактів

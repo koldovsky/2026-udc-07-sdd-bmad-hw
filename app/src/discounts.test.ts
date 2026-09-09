@@ -31,8 +31,13 @@ const coupon = (over: Partial<Coupon> = {}): Coupon => ({
 
 const NOW = new Date("2026-09-07T12:00:00.000Z");
 
-/** Contract invariants from the spec (§5) — asserted on every call below. */
-const expectInvariants = (b: PriceBreakdown): void => {
+/**
+ * Contract invariants from the spec (§5) — asserted on every call below.
+ * `uniqueCouponCount` is the number of distinct codes the customer entered:
+ * duplicates collapse (D-12), and every remaining code must come back either
+ * applied or rejected with a reason.
+ */
+const expectInvariants = (b: PriceBreakdown, uniqueCouponCount: number): void => {
   expect(b.totalKopecks).toBe(
     b.subtotalKopecks -
       b.tierDiscountKopecks -
@@ -53,11 +58,16 @@ const expectInvariants = (b: PriceBreakdown): void => {
     expect(Number.isInteger(amount)).toBe(true);
   }
   expect(b.appliedCouponCode !== null).toBe(b.couponDiscountKopecks > 0);
+  // Жоден введений код не зникає без пояснення: кожен унікальний код або
+  // застосовано, або повернено у списку відхилених рівно один раз.
+  expect(b.rejectedCoupons.length + (b.appliedCouponCode !== null ? 1 : 0)).toBe(
+    uniqueCouponCount,
+  );
 };
 
 const price = (o: Order, catalogue: Coupon[] = [], now: Date = NOW): PriceBreakdown => {
   const breakdown = priceOrder(o, catalogue, now);
-  expectInvariants(breakdown);
+  expectInvariants(breakdown, new Set(o.coupons).size);
   return breakdown;
 };
 
@@ -107,6 +117,29 @@ describe("priceOrder", () => {
     expect(b.couponDiscountKopecks).toBe(6_000);
     expect(b.rejectedCoupons).toEqual([{ code: "FRESH50", reason: "not_best" }]);
     expect(b.totalKopecks).toBe(98_900);
+  });
+
+  it("AC-3: однакова знижка — перемагає введений першим промокод", () => {
+    const items = [
+      item({ unitPriceKopecks: 60_000, category: "fresh" }),
+      item({ sku: "BB-2", unitPriceKopecks: 40_000 }),
+    ];
+    const catalogue = [
+      coupon({ code: "FRESH10", kind: "percent", value: 10, category: "fresh" }),
+      coupon({ code: "FRESH6K", kind: "fixed", value: 6_000, category: "fresh" }),
+    ];
+    // Обидва дають рівно 6 000 копійок — вирішує лише порядок введення.
+    const first = price(order({ items, coupons: ["FRESH10", "FRESH6K"] }), catalogue);
+    expect(first.appliedCouponCode).toBe("FRESH10");
+    expect(first.couponDiscountKopecks).toBe(6_000);
+    expect(first.rejectedCoupons).toEqual([{ code: "FRESH6K", reason: "not_best" }]);
+
+    const reversed = price(order({ items, coupons: ["FRESH6K", "FRESH10"] }), catalogue);
+    expect(reversed.appliedCouponCode).toBe("FRESH6K");
+    expect(reversed.couponDiscountKopecks).toBe(6_000);
+    expect(reversed.rejectedCoupons).toEqual([{ code: "FRESH10", reason: "not_best" }]);
+    // Підсумок від порядку не залежить — різниться лише те, який код виграв.
+    expect(reversed.totalKopecks).toBe(first.totalKopecks);
   });
 
   it("AC-4: знижка перевищує суму товарів — підсумок не відʼємний, доставка сплачується", () => {
@@ -295,7 +328,7 @@ describe("priceOrder", () => {
 
 describe("Інваріанти розкладки (контракт §5)", () => {
   // Ширша перевірка, ніж окремі AC: інваріанти мають триматись на будь-якій
-  // комбінації рівня, виду купона й категорії, а не лише на 16 сценаріях.
+  // комбінації рівня, виду купона й категорії, а не лише на сценаріях AC.
   const tiers: Order["customerTier"][] = ["none", "silver", "gold"];
   const categories: LineItem["category"][] = ["standard", "fresh", "digital"];
   const kinds: Coupon["kind"][] = ["percent", "fixed"];
@@ -312,16 +345,18 @@ describe("Інваріанти розкладки (контракт §5)", () =>
               value: kind === "percent" ? 100 : 1_000_000,
               category,
             });
+            const coupons = ["X", "X", "MISSING"];
             expectInvariants(
               priceOrder(
                 order({
                   items: [item({ unitPriceKopecks, category })],
                   customerTier,
-                  coupons: ["X", "X", "MISSING"],
+                  coupons,
                 }),
                 [c],
                 NOW,
               ),
+              new Set(coupons).size,
             );
             checked += 1;
           }
