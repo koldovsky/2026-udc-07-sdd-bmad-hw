@@ -40,3 +40,8 @@ nul
 # deliberately scope permissions there.
 .claude/*
 !.claude/settings.json
+# WS7 Task B: OpenSpec generates its workflow into .claude/ (6 skills + 6
+# commands). These are tool artifacts, not local state — the homework asks for
+# them in the PR, so un-ignore the two directories `openspec init` writes to.
+!.claude/commands/
+!.claude/skills/
