@@ -79,6 +79,15 @@ test("AC-6: Aggregate loyalty rounding at half a kopeck", () => {
   });
 });
 
+test("AC-6 / D-4: Gold loyalty rounds exactly for a large base", () => {
+  const basket = order([line(9_007_199_254_736_055)], { customerTier: "gold" });
+
+  expect(priceOrder(basket, [], nowMs)).toMatchObject({
+    tierDiscountKopecks: 900_719_925_473_606,
+    totalKopecks: 8_106_479_329_267_349,
+  });
+});
+
 test("AC-7: Empty basket returns five zero amounts", () => {
   const catalog: Coupon[] = [{ code: "SAVE", kind: "fixed", value: 1_000, expiresAt }];
   const basket = order([], { customerTier: "gold", coupons: ["SAVE"] });
